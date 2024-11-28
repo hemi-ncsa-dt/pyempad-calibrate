@@ -50,8 +50,6 @@ test = [
     "pytest",
     "pytest-cov",
     "Cython>=3.0.3",   # for Cython.Coverage
-    "girder-client",
-    "tox",
 ]
 
 [tool.setuptools]
