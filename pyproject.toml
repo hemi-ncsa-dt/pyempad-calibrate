@@ -45,6 +45,14 @@ text = "BSD 3-Clause"
 [project.scripts]
 pyempad-calibrate = "pyempad_calibrate.command:main"
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "Cython>=3.0.3",   # for Cython.Coverage
+    "girder-client",
+]
+
 [tool.setuptools]
 include-package-data = true
 zip-safe = true
