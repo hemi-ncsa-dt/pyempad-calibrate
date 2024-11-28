@@ -1,0 +1,57 @@
+name: Testing and Linting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+defaults:    
+  run:    
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Checkout repo
+      uses: actions/checkout@v4
+    - name: Create LFS file list
+      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+    - name: Restore LFS cache
+      uses: actions/cache@v4
+      id: lfs-cache
+      with:
+        path: .git/lfs
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+    - name: git lfs pull
+      if: steps.lfs-cache.outputs.cache-hit != 'true'
+      run: git lfs pull
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install tox
+    - name: Cache tox environments
+      uses: actions/cache@v4
+      with:
+        path: .tox
+        key: ${{ matrix.python-version }}-tox-${{ hashFiles('setup.py', 'requirements.txt') }}
+    - name: Run Linter
+      run: tox -e lint
+    - name: Run Tests with coverage
+      env:
+        GIRDER_MAX_CURSOR_TIMEOUT_MS: 60000
+        LINETRACE: True
+      run: tox -e pytest
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}

@@ -51,8 +51,20 @@ test = [
     "pytest-cov",
     "Cython>=3.0.3",   # for Cython.Coverage
     "girder-client",
+    "tox",
 ]
 
 [tool.setuptools]
 include-package-data = true
-zip-safe = true
+zip-safe = false
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+    "--import-mode=importlib",
+    "--cov=pyempad_calibrate",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-report=html",
+    "--cov-fail-under=100",
+]
