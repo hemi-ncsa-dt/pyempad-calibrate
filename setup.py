@@ -1,9 +1,8 @@
 import os
-from setuptools import setup, Extension
-from Cython.Build import cythonize
-import numpy as np
 
-linetrace = os.environ.get("LINETRACE", False) == "True"
+import numpy as np
+from Cython.Build import cythonize
+from setuptools import Extension, setup
 
 ext_modules = [
     Extension(
@@ -15,7 +14,10 @@ ext_modules = [
 setup(
     ext_modules=cythonize(
         ext_modules,
-        compiler_directives={"language_level": "3", "linetrace": linetrace},
+        compiler_directives={
+            "language_level": "3",
+            "linetrace": os.environ.get("LINETRACE", False) == "True",
+        },
     ),
     include_dirs=[np.get_include()],
 )
