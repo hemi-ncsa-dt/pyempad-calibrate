@@ -60,5 +60,5 @@ def main(calib_path, shape, output_path, background_file, raw_file):
     frames[:, :, 0::2] *= flatfA[:, :, None]
     frames[:, :, 1::2] *= flatfB[:, :, None]
     print("Saving results")
-    output_fname = os.path.join(output_path, f"bg_subtracted_{os.path.basename(raw_file)}")
+    output_fname = os.path.join(output_path, f"bg_subtracted_{os.path.basename(raw_file)}"[:-4])
     np.save(output_fname, frames)

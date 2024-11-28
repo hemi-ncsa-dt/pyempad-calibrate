@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import numpy as np
 import pytest
 from click.testing import CliRunner
 from pyempad_calibrate.command import main
@@ -26,7 +27,12 @@ def test_files_path(tmp_path):
     return tmp_path
 
 
-def test_main(test_files_path):
+@pytest.fixture
+def reference_data():
+    return np.load(os.path.join(os.path.dirname(__file__), "data", "bg_subtracted_n1000.raw"))
+
+
+def test_main(test_files_path, reference_data):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=test_files_path) as td:
         result = runner.invoke(
@@ -48,3 +54,7 @@ def test_main(test_files_path):
         assert "Raw data shape: (128, 128, 1000)" in result.output
         assert "Debouncing" in result.output
         assert "Multiplying by flat fields" in result.output
+
+        assert os.path.exists(os.path.join(td, "bg_subtracted_raw.npy"))
+        output_date = np.load(os.path.join(td, "bg_subtracted_raw.npy"))
+        assert np.allclose(output_date, reference_data, atol=1e-5)  # float32 precision
