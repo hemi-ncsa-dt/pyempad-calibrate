@@ -29,26 +29,30 @@ def test_files_path(tmp_path):
 
 @pytest.fixture
 def reference_data():
-    return np.load(os.path.join(os.path.dirname(__file__), "data", "bg_subtracted_n1000.raw"))
+    return np.load(
+        os.path.join(os.path.dirname(__file__), "data", "bg_subtracted_n1000.raw")
+    )
 
 
-def test_main(test_files_path, reference_data):
+@pytest.mark.parametrize("direct", [True, False])
+def test_main(test_files_path, reference_data, direct):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=test_files_path) as td:
-        result = runner.invoke(
-            main,
-            [
-                "--calib_path",
-                os.path.join(td, "..", "calib"),
-                "--shape",
-                "128",
-                "128",
-                "--output_path",
-                ".",
-                os.path.join(td, "..", "data/background.bin"),
-                os.path.join(td, "..", "data/raw.bin"),
-            ],
-        )
+        args = [
+            "--calib_path",
+            os.path.join(td, "..", "calib"),
+            "--shape",
+            "128",
+            "128",
+            "--output_path",
+            ".",
+            os.path.join(td, "..", "data/background.bin"),
+            os.path.join(td, "..", "data/raw.bin"),
+        ]
+        if direct:
+            args.insert(0, "--direct")
+
+        result = runner.invoke(main, args)
         assert result.exit_code == 0
         assert "Background shape: (128, 128, 1000)" in result.output
         assert "Raw data shape: (128, 128, 1000)" in result.output
@@ -56,5 +60,5 @@ def test_main(test_files_path, reference_data):
         assert "Multiplying by flat fields" in result.output
 
         assert os.path.exists(os.path.join(td, "bg_subtracted_raw.npy"))
-        output_date = np.load(os.path.join(td, "bg_subtracted_raw.npy"))
-        assert np.allclose(output_date, reference_data, atol=1e-5)  # float32 precision
+        output_data = np.load(os.path.join(td, "bg_subtracted_raw.npy"))
+        assert np.allclose(output_data, reference_data, atol=1e-5)  # float32 precision

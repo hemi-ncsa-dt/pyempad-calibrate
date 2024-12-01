@@ -3,16 +3,17 @@ import os
 import click
 import numpy as np
 
-from .utils import combine, debounce
+from pyempad_calibrate.utils import combine, debounce, combine_direct
 
 
 @click.command()
 @click.option("--calib_path", default="./", help="Path to calibration files")
 @click.option("--shape", type=(int, int), default=(128, 128), help="Shape of images")
 @click.option("--output_path", default="./", help="Path to save results")
+@click.option("--direct", is_flag=True, help="Use direct mode for reading data", default=False)
 @click.argument("background_file", type=click.Path(exists=True))
 @click.argument("raw_file", type=click.Path(exists=True))
-def main(calib_path, shape, output_path, background_file, raw_file):
+def main(calib_path, shape, output_path, direct, background_file, raw_file):
     print("Reading calibration data")
     g1 = np.concatenate(
         (
@@ -33,8 +34,14 @@ def main(calib_path, shape, output_path, background_file, raw_file):
         )
     )
     print("Reading background data")
-    values = np.fromfile(background_file, dtype=np.uint32)
-    frames = combine(values, g1, g2, off)
+    nframes = os.stat(background_file).st_size // (128 * 128 * 4)
+    print(f"Detected {nframes=}")
+    if direct:
+        frames = combine_direct(g1, g2, off, background_file, nframes)
+    else:
+        values = np.fromfile(background_file, dtype=np.uint32)
+        frames = combine(values, g1, g2, off)
+
     frames = frames.reshape((shape[0], shape[1], -1), order="F")
     print("Background shape:", frames.shape)
     bkgodata = np.mean(frames[:, :, 0::2], axis=2)
@@ -42,8 +49,13 @@ def main(calib_path, shape, output_path, background_file, raw_file):
     del frames
 
     print("Reading raw data")
-    values = np.fromfile(raw_file, dtype=np.uint32)
-    frames = combine(values, g1, g2, off)
+    nframes = os.stat(raw_file).st_size // (128 * 128 * 4)
+    if direct:
+        frames = combine_direct(g1, g2, off, raw_file, nframes)
+    else:
+        values = np.fromfile(raw_file, dtype=np.uint32)
+        frames = combine(values, g1, g2, off)
+
     frames = frames.reshape((shape[0], shape[1], -1), order="F")
     frames[:, :, 0::2] -= bkgodata[:, :, None]
     frames[:, :, 1::2] -= bkgedata[:, :, None]
