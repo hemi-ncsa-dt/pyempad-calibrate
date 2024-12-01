@@ -17,7 +17,7 @@ def combine_direct(
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] g2,
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] off,
     str filename,
-    int nsize,
+    Py_ssize_t nsize,
 ):
     """
     Combine the data from the file using the given parameters.
@@ -49,13 +49,13 @@ def combine_direct(
         The combined frames.
     """
 
-    cdef cnp.ndarray[DTYPE_t, ndim=1] frames = np.zeros(128*128*nsize, dtype=DTYPE)
-    cdef int i, j, k
+    cdef cnp.ndarray[DTYPE_t, ndim=1] frames = np.empty(128 * 128 * nsize, dtype=DTYPE)
+    cdef Py_ssize_t i, j, k
     cdef DTYPE_t ana, dig, gn
     cdef cnp.uint32_t ana_mask = 0x3FFF
     cdef cnp.uint32_t dig_mask = 0x3FFFC000
     cdef cnp.uint32_t gn_mask = 0x80000000
-    cdef int wrap = 128 * 128 * 2
+    cdef Py_ssize_t wrap = 128 * 128 * 2
     cdef cnp.ndarray[VAL_DTYPE_t, ndim=1] values
 
     with open(filename, 'rb') as f:
@@ -85,13 +85,12 @@ def combine(
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] g2,
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] off
 ):
-    cdef cnp.ndarray[DTYPE_t, ndim=1] frames = np.zeros_like(values, dtype=DTYPE)
-    cdef int i, j
-    cdef DTYPE_t ana, dig, gn=0.01
+    cdef cnp.ndarray[DTYPE_t, ndim=1] frames = np.empty(values.shape[0], dtype=DTYPE)
+    cdef Py_ssize_t i, j, wrap = 128 * 128 * 2
+    cdef DTYPE_t ana, dig, gn
     cdef cnp.uint32_t ana_mask = 0x3FFF
     cdef cnp.uint32_t dig_mask = 0x3FFFC000
     cdef cnp.uint32_t gn_mask = 0x80000000
-    cdef int wrap = 128 * 128 * 2
     for i in range(values.shape[0]):
         j = i % wrap
         ana = values[i] & ana_mask
