@@ -18,6 +18,7 @@ def combine_direct(
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] off,
     str filename,
     Py_ssize_t nsize,
+    long offset=0
 ):
     """
     Combine the data from the file using the given parameters.
@@ -52,13 +53,18 @@ def combine_direct(
     cdef cnp.ndarray[DTYPE_t, ndim=1] frames = np.empty(128 * 128 * nsize, dtype=DTYPE)
     cdef Py_ssize_t i
     cdef cnp.ndarray[VAL_DTYPE_t, ndim=1] values
+    cdef Py_ssize_t max_chunk_size = min(nsize, 64)
+    cdef long chunk_size = 4 * 128 * 128 * max_chunk_size
+    cdef long total_size = 4 * 128 * 128 * nsize
 
     with open(filename, 'rb') as f:
+        f.seek(offset)
         i = 0
-        while True:
-            chunk = f.read(128*128*128*4)
+        while total_size > 0:
+            chunk = f.read(chunk_size)
             if not chunk:
                 break
+            total_size -= len(chunk)
             values = np.frombuffer(chunk, dtype=VAL_DTYPE)
             frames[i:i+values.shape[0]] = combine_chunk(values, g1, g2, off)
             i += values.shape[0]
