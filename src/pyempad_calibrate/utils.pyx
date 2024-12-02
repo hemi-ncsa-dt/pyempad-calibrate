@@ -50,12 +50,7 @@ def combine_direct(
     """
 
     cdef cnp.ndarray[DTYPE_t, ndim=1] frames = np.empty(128 * 128 * nsize, dtype=DTYPE)
-    cdef Py_ssize_t i, j, k
-    cdef DTYPE_t ana, dig, gn
-    cdef cnp.uint32_t ana_mask = 0x3FFF
-    cdef cnp.uint32_t dig_mask = 0x3FFFC000
-    cdef cnp.uint32_t gn_mask = 0x80000000
-    cdef Py_ssize_t wrap = 128 * 128 * 2
+    cdef Py_ssize_t i
     cdef cnp.ndarray[VAL_DTYPE_t, ndim=1] values
 
     with open(filename, 'rb') as f:
@@ -65,21 +60,15 @@ def combine_direct(
             if not chunk:
                 break
             values = np.frombuffer(chunk, dtype=VAL_DTYPE)
-            for k in range(values.shape[0]):
-                j = i % wrap
-                ana = values[k] & ana_mask
-                dig = (values[k] & dig_mask) >> 14
-                gn  = (values[k] & gn_mask) >> 31
-
-                frames[i] = ana * (1.0 - gn) + g1[j] * (ana - off[j]) * gn + g2[j] * dig
-                i += 1
+            frames[i:i+values.shape[0]] = combine_chunk(values, g1, g2, off)
+            i += values.shape[0]
     return frames
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-def combine(
+cpdef combine_chunk(
     cnp.ndarray[VAL_DTYPE_t, ndim=1, mode="fortran"] values,
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] g1,
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] g2,

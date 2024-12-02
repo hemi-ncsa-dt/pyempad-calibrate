@@ -1,9 +1,10 @@
 import os
+import time
 
 import click
 import numpy as np
 
-from pyempad_calibrate.utils import combine, debounce, combine_direct
+from pyempad_calibrate.utils import combine_chunk, debounce, combine_direct
 
 
 @click.command()
@@ -36,11 +37,13 @@ def main(calib_path, shape, output_path, direct, background_file, raw_file):
     print("Reading background data")
     nframes = os.stat(background_file).st_size // (128 * 128 * 4)
     print(f"Detected {nframes=}")
+    start_time = time.time()
     if direct:
         frames = combine_direct(g1, g2, off, background_file, nframes)
     else:
         values = np.fromfile(background_file, dtype=np.uint32)
-        frames = combine(values, g1, g2, off)
+        frames = combine_chunk(values, g1, g2, off)
+    print(f"-- Took {time.time() - start_time:.2f} seconds")
 
     frames = frames.reshape((shape[0], shape[1], -1), order="F")
     print("Background shape:", frames.shape)
@@ -50,11 +53,13 @@ def main(calib_path, shape, output_path, direct, background_file, raw_file):
 
     print("Reading raw data")
     nframes = os.stat(raw_file).st_size // (128 * 128 * 4)
+    start_time = time.time()
     if direct:
         frames = combine_direct(g1, g2, off, raw_file, nframes)
     else:
         values = np.fromfile(raw_file, dtype=np.uint32)
-        frames = combine(values, g1, g2, off)
+        frames = combine_chunk(values, g1, g2, off)
+    print(f"-- Took {time.time() - start_time:.2f} seconds")
 
     frames = frames.reshape((shape[0], shape[1], -1), order="F")
     frames[:, :, 0::2] -= bkgodata[:, :, None]
