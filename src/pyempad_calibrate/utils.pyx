@@ -18,6 +18,7 @@ def combine_direct(
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] off,
     str filename,
     Py_ssize_t nsize,
+    long offset=0
 ):
     """
     Combine the data from the file using the given parameters.
@@ -50,36 +51,30 @@ def combine_direct(
     """
 
     cdef cnp.ndarray[DTYPE_t, ndim=1] frames = np.empty(128 * 128 * nsize, dtype=DTYPE)
-    cdef Py_ssize_t i, j, k
-    cdef DTYPE_t ana, dig, gn
-    cdef cnp.uint32_t ana_mask = 0x3FFF
-    cdef cnp.uint32_t dig_mask = 0x3FFFC000
-    cdef cnp.uint32_t gn_mask = 0x80000000
-    cdef Py_ssize_t wrap = 128 * 128 * 2
+    cdef Py_ssize_t i
     cdef cnp.ndarray[VAL_DTYPE_t, ndim=1] values
+    cdef Py_ssize_t max_chunk_size = min(nsize, 64)
+    cdef long chunk_size = 4 * 128 * 128 * max_chunk_size
+    cdef long total_size = 4 * 128 * 128 * nsize
 
     with open(filename, 'rb') as f:
+        f.seek(offset)
         i = 0
-        while True:
-            chunk = f.read(128*128*128*4)
+        while total_size > 0:
+            chunk = f.read(chunk_size)
             if not chunk:
                 break
+            total_size -= len(chunk)
             values = np.frombuffer(chunk, dtype=VAL_DTYPE)
-            for k in range(values.shape[0]):
-                j = i % wrap
-                ana = values[k] & ana_mask
-                dig = (values[k] & dig_mask) >> 14
-                gn  = (values[k] & gn_mask) >> 31
-
-                frames[i] = ana * (1.0 - gn) + g1[j] * (ana - off[j]) * gn + g2[j] * dig
-                i += 1
+            frames[i:i+values.shape[0]] = combine_chunk(values, g1, g2, off)
+            i += values.shape[0]
     return frames
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-def combine(
+cpdef combine_chunk(
     cnp.ndarray[VAL_DTYPE_t, ndim=1, mode="fortran"] values,
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] g1,
     cnp.ndarray[DTYPE_t, ndim=1, mode="fortran"] g2,

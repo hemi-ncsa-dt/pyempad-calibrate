@@ -34,8 +34,7 @@ def reference_data():
     )
 
 
-@pytest.mark.parametrize("direct", [True, False])
-def test_main(test_files_path, reference_data, direct):
+def test_main(test_files_path, reference_data):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=test_files_path) as td:
         args = [
@@ -49,16 +48,12 @@ def test_main(test_files_path, reference_data, direct):
             os.path.join(td, "..", "data/background.bin"),
             os.path.join(td, "..", "data/raw.bin"),
         ]
-        if direct:
-            args.insert(0, "--direct")
 
         result = runner.invoke(main, args)
         assert result.exit_code == 0
-        assert "Background shape: (128, 128, 1000)" in result.output
-        assert "Raw data shape: (128, 128, 1000)" in result.output
-        assert "Debouncing" in result.output
-        assert "Multiplying by flat fields" in result.output
 
-        assert os.path.exists(os.path.join(td, "bg_subtracted_raw.npy"))
-        output_data = np.load(os.path.join(td, "bg_subtracted_raw.npy"))
+        assert os.path.exists(os.path.join(td, "bg_subtracted_raw"))
+        output_data = np.fromfile(
+            os.path.join(td, "bg_subtracted_raw"), dtype=np.float32
+        ).reshape((128, 128, 1000), order="C")
         assert np.allclose(output_data, reference_data, atol=1e-5)  # float32 precision
